@@ -1,4 +1,3 @@
-import java.awt.*;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -65,7 +64,7 @@ public class NetworkLayer {
                 try {
                     NetworkLayer receiver = new NetworkLayer(receiverPort);
                     Data data = receiver.receive();
-                    System.out.println("[Receiver] Received: " + data.payload() +
+                    System.out.println("[Receiver] Received: " + data.frame +
                             " from " + data.srcIp() + ":" + data.srcPort());
                     receiver.close();
                 } catch (Exception e) {
