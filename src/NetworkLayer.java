@@ -1,3 +1,4 @@
+import java.awt.*;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -12,11 +13,11 @@ public class NetworkLayer {
 
     /**
      * Inner class to hold received data AND the physical source (needed for Switch learning)
-     * @param payload The content (e.g., "A:B:hello")
+     * @param frame   The frame content (e.g., "A:B:hello")
      * @param srcIp   The physical sender's IP
      * @param srcPort The physical sender's Port
      */
-    public record Frame(String payload, String srcIp, int srcPort) {}
+    public record Data(String frame, String srcIp, int srcPort) {}
 
     public NetworkLayer(int port) throws SocketException {
         this.socket = new DatagramSocket(port);
@@ -30,7 +31,7 @@ public class NetworkLayer {
         socket.send(packet);
     }
 
-    public Frame receive() throws IOException {
+    public Data receive() throws IOException {
         byte[] buffer = new byte[1024];
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
@@ -40,7 +41,7 @@ public class NetworkLayer {
         String senderIp = packet.getAddress().getHostAddress();
         int senderPort = packet.getPort();
 
-        return new Frame(msg, senderIp, senderPort);
+        return new Data(msg, senderIp, senderPort);
     }
 
     public void close() {
@@ -63,9 +64,9 @@ public class NetworkLayer {
                 System.out.println("[Receiver] Starting on port " + receiverPort);
                 try {
                     NetworkLayer receiver = new NetworkLayer(receiverPort);
-                    Frame frame = receiver.receive();
-                    System.out.println("[Receiver] Received: " + frame.payload() +
-                            " from " + frame.srcIp() + ":" + frame.srcPort());
+                    Data data = receiver.receive();
+                    System.out.println("[Receiver] Received: " + data.payload() +
+                            " from " + data.srcIp() + ":" + data.srcPort());
                     receiver.close();
                 } catch (Exception e) {
                     System.err.println("[Receiver] Error: " + e.getMessage());
