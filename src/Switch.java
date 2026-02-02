@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Switch {
@@ -16,11 +17,21 @@ public class Switch {
         this.switchTable = new HashMap<>();
     }
 
-    //loadConfig() method
+    private void loadConfig(Config config){
+        this.myIp = config.getIp(switchId);
+        this.myPort = config.getPort(switchId);
+
+        List<String> neighbors = config.getNeighbors(switchId);
+        for (String neighborId : neighbors) {
+            String neighborIp = config.getIp(neighborId);
+            int neighborPort = config.getPort(neighborId);
+            virtualPorts.put(neighborId, new PortInfo(neighborIp, neighborPort));
+        }
+    }
 
     public void initialize(String configFile) throws IOException {
-        //call load config to find ip, port, and neighbors
-        //create network layer
+        Config config = new Config(configFile);
+        loadConfig(config);
 
         this.networkLayer = new NetworkLayer(myPort);
 
@@ -52,7 +63,6 @@ public class Switch {
         }
         String srcMAC = parts[0];
         String destMAC = parts[1];
-        String message = parts[2];
 
         System.out.println(switchId + " received frame: " + frame +
                 " from address " + senderIp + ":" + senderPort);
@@ -106,6 +116,7 @@ public class Switch {
         }
         System.out.println("=================================\n");
     }
+
     private static class PortInfo {
         String ip;
         int port;
@@ -119,8 +130,12 @@ public class Switch {
     public static void main(String[] args) {
         String switchId = args[0];
         Switch sw = new Switch(switchId);
-        Config config = new Config(/*"config.json"*/);
-        //sw.initialize(config);
-        sw.start();
+        try {
+            sw.initialize("config.json");
+            sw.start();
+        } catch (IOException e) {
+            System.err.println("Failed to initialize switch: " + e.getMessage());
+        }
+
     }
 }
