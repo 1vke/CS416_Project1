@@ -20,18 +20,25 @@ public class Host {
 
     }
 
-    private void initalize(String configFile) throws IOException {
+    private void initialize(String configFile) throws IOException {
         //load config to find ip, port, and neighbors
+        Config config = new Config(configFile);
+        myIp = config.getIp(hostID);
+        myPort = config.getPort(hostID);
+
+        String switchId = config.getNeighbors(hostID).get(0);
+        switchIP = config.getIp(switchId);
+        switchPort = config.getPort(switchId);
+
         networkLayer = new NetworkLayer(myPort);
+
+        System.out.println("Host " + hostID + " initialized on " +
+                myIp + " : " + myPort);
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
 
         executor.submit(this::sender);
         executor.submit(this::receiver);
-
-        System.out.println("Host " + hostID + " initialized on " +
-                myIp + ":" + myPort);
-
     }
 
     //sender
@@ -49,7 +56,7 @@ public class Host {
             try {
                 networkLayer.send(frame, switchIP, switchPort);
             } catch (IOException e) {
-                System.out.println("[Host " + hostID + "] Failed to send frame");
+                System.out.println("Host " + hostID + " Failed to send frame");
             }
         }
     }
@@ -64,7 +71,7 @@ public class Host {
                     continue;
                 }
 
-                    String srcMac = parts[0];
+                String srcMac = parts[0];
                 String destMac = parts[1];
                 String message = parts[2];
 
@@ -81,10 +88,19 @@ public class Host {
 
     //main
     public static void main(String[] args) {
-        String hostID = args[0];
-         Host host = new Host(hostID);
-         Config config = new Config(/*'config.json*/);
-         //host.initalize(config);
+        if (args.length != 1) {
+            System.out.println("Usage: java Host <hostID>");
+            return;
+        }
+
+        Host host = new Host(args[0]);
+        try {
+            host.initialize("config.json");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+
     }
 
 }
