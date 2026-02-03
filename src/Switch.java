@@ -125,6 +125,19 @@ public class Switch {
             this.ip = ip;
             this.port = port;
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            PortInfo portInfo = (PortInfo) obj;
+            return port == portInfo.port && ip.equals(portInfo.ip);
+        }
+
+        @Override
+        public int hashCode() {
+            return ip.hashCode() * 31 + port;
+        }
     }
 
     public static void main(String[] args) {
