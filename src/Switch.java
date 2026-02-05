@@ -147,7 +147,7 @@ public class Switch {
         String switchId = args[0];
         Switch sw = new Switch(switchId);
         try {
-            sw.initialize("config.json");
+            sw.initialize("resources/config.json");
             sw.start();
         } catch (IOException e) {
             System.err.println("Failed to initialize switch: " + e.getMessage());

@@ -93,7 +93,7 @@ public class Host {
 
         Host host = new Host(args[0]);
         try {
-            host.initialize("config.json");
+            host.initialize("resources/config.json");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
