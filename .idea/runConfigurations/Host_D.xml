@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Host D" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="Host" />
+    <module name="CS416_Project1" />
+    <option name="PROGRAM_PARAMETERS" value="D" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

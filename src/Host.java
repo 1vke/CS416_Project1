@@ -4,11 +4,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Host {
-
-    private String hostID;
-    private String mac;
-    private String myIp;
-    private int myPort;
+    private final String hostID;
+    private final String mac;
     private String switchIP;
     private int switchPort;
 
@@ -17,16 +14,16 @@ public class Host {
     private Host(String hostID) {
         this.mac = hostID;
         this.hostID = hostID;
-
     }
 
+    @SuppressWarnings("SameParameterValue")
     private void initialize(String configFile) throws IOException {
         //load config to find ip, port, and neighbors
         Config config = new Config(configFile);
-        myIp = config.getIp(hostID);
-        myPort = config.getPort(hostID);
+        String myIp = config.getIp(hostID);
+        int myPort = config.getPort(hostID);
 
-        String switchId = config.getNeighbors(hostID).get(0);
+        String switchId = config.getNeighbors(hostID).getFirst();
         switchIP = config.getIp(switchId);
         switchPort = config.getPort(switchId);
 
@@ -35,13 +32,14 @@ public class Host {
         System.out.println("Host " + hostID + " initialized on " +
                 myIp + " : " + myPort);
 
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-
-        executor.submit(this::sender);
-        executor.submit(this::receiver);
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            executor.submit(this::sender);
+            executor.submit(this::receiver);
+        }
     }
 
     //sender
+    @SuppressWarnings("InfiniteLoopStatement")
     private void sender() {
         Scanner scanner = new Scanner(System.in);
         while (true) {
@@ -62,6 +60,7 @@ public class Host {
     }
 
     //receiver
+    @SuppressWarnings("InfiniteLoopStatement")
     private void receiver() {
         while (true) {
             try {
@@ -78,7 +77,7 @@ public class Host {
                 if (destMac.equals(mac)) {
                     System.out.println("Message from " + srcMac + ": " + message);
                 } else {
-                    System.out.println("MAC mismatch");
+                    System.out.println("Debug: MAC address mismatch - received " + destMac + " but I am " + mac + ". (Flooded frame)");
                 }
             } catch (IOException e) {
                 System.out.println("Receive error");
@@ -86,7 +85,6 @@ public class Host {
         }
     }
 
-    //main
     public static void main(String[] args) {
         if (args.length != 1) {
             System.out.println("Usage: java Host <hostID>");
@@ -99,8 +97,5 @@ public class Host {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-
     }
-
 }

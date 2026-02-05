@@ -4,11 +4,11 @@ import java.util.List;
 import java.util.Map;
 
 public class Switch {
-    private String switchId;
+    private final String switchId;
     private String myIp;
     private int myPort;
-    private Map<String, PortInfo> virtualPorts;
-    private Map<String, PortInfo> switchTable;
+    private final Map<String, PortInfo> virtualPorts;
+    private final Map<String, PortInfo> switchTable;
     private NetworkLayer networkLayer;
 
     public Switch(String switchId) {
@@ -25,7 +25,8 @@ public class Switch {
         for (String neighborId : neighbors) {
             String neighborIp = config.getIp(neighborId);
             int neighborPort = config.getPort(neighborId);
-            virtualPorts.put(neighborId, new PortInfo(neighborIp, neighborPort));
+            String portName = neighborIp + ":" + neighborPort;
+            virtualPorts.put(portName, new PortInfo(neighborIp, neighborPort));
         }
     }
 
@@ -39,6 +40,7 @@ public class Switch {
         System.out.println("Virtual ports created for neighbors: " + virtualPorts.keySet());
     }
 
+    @SuppressWarnings("InfiniteLoopStatement")
     public void start() {
         System.out.println("Switch " + switchId + " is running");
 
@@ -64,25 +66,24 @@ public class Switch {
         String srcMAC = parts[0];
         String destMAC = parts[1];
 
-        System.out.println(switchId + " received frame: " + frame +
-                " from address " + senderIp + ":" + senderPort);
+        System.out.println("[" + switchId + "] Recieve: " + frame +
+                " from " + senderIp + ":" + senderPort);
 
         PortInfo incomingPort = new PortInfo(senderIp, senderPort);
         boolean isNewEntry = !switchTable.containsKey(srcMAC);
         switchTable.put(srcMAC, incomingPort);
 
         if (isNewEntry) {
-            System.out.println(switchId + " learned new MAC address: " + srcMAC);
+            System.out.println("[" + switchId + "] Learned: " + srcMAC + " -> " + senderIp + ":" + senderPort);
             printSwitchTable();
         }
 
         if (switchTable.containsKey(destMAC)) {
             PortInfo destPort = switchTable.get(destMAC);
-            System.out.println(switchId + " forwarding to known destination: " + destMAC);
+            System.out.println("[" + switchId + "] Forwarding: Dest " + destMAC + " is known");
             forwardFrame(frame, destPort);
         } else {
-            System.out.println(switchId + " destination " + destMAC +
-                    " unknown, flooding to all ports");
+            System.out.println("[" + switchId + "] Flooding: Dest " + destMAC + " is unknown");
             flood(frame, incomingPort);
         }
     }
@@ -90,7 +91,7 @@ public class Switch {
     private void forwardFrame(String frame, PortInfo port) {
         try {
             networkLayer.send(frame, port.ip, port.port);
-            System.out.println(switchId + " sent frame to " + port.ip + ":" + port.port);
+            System.out.println("[" + switchId + "] Transmit: Frame sent to " + port.ip + ":" + port.port);
         } catch (IOException e) {
             System.err.println("Error forwarding frame to " + port.ip + ":" + port.port +
                     " - " + e.getMessage());
@@ -106,15 +107,17 @@ public class Switch {
     }
 
     private void printSwitchTable() {
-        System.out.println("=================================");
-        System.out.println("Switch Table for " + switchId + ":");
-        System.out.println("MAC Address  ->  IP:Port");
-        System.out.println("---------------------------------");
+        System.out.println("\n+-------------------------------------------+");
+        System.out.println("| Switch Table for " + String.format("%-25s", switchId) + "|");
+        System.out.println("+----------------------+--------------------+");
+        System.out.println("| MAC Address          | Virtual Port (IP)  |");
+        System.out.println("+----------------------+--------------------+");
         for (Map.Entry<String, PortInfo> entry : switchTable.entrySet()) {
-            System.out.println(entry.getKey() + "  ->  " +
+            System.out.printf("| %-20s | %-18s |%n",
+                    entry.getKey(),
                     entry.getValue().ip + ":" + entry.getValue().port);
         }
-        System.out.println("=================================\n");
+        System.out.println("+----------------------+--------------------+\n");
     }
 
     private static class PortInfo {
@@ -149,6 +152,5 @@ public class Switch {
         } catch (IOException e) {
             System.err.println("Failed to initialize switch: " + e.getMessage());
         }
-
     }
 }

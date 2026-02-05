@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Full Network" type="CompoundRunConfigurationType">
+    <toRun name="Switch S1" type="Application" />
+    <toRun name="Switch S2" type="Application" />
+    <toRun name="Switch S3" type="Application" />
+    <toRun name="Host A" type="Application" />
+    <toRun name="Host B" type="Application" />
+    <toRun name="Host C" type="Application" />
+    <toRun name="Host D" type="Application" />
+    <method v="2" />
+  </configuration>
+</component>

@@ -10,6 +10,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class Config {
+    public Map<String, DeviceInfo> devices = new HashMap<>();
+    public Map<String, List<String>> links = new HashMap<>();
 
     public static class DeviceInfo {
         public String id;
@@ -22,8 +24,6 @@ public class Config {
             this.port = port;
         }
     }
-    public Map<String, DeviceInfo> devices = new HashMap<>();
-    public Map<String, List<String>> links = new HashMap<>();
 
     public Config(String filename) throws IOException {
         parse(filename);
@@ -63,8 +63,14 @@ public class Config {
     }
 
     public String getIp(String id) {
-        return devices.get(id).ip; }
+        return devices.get(id).ip;
+    }
+
     public int getPort(String id) {
-        return devices.get(id).port; }
+        return devices.get(id).port;
+    }
+
     public List<String> getNeighbors(String id) {
-        return links.get(id); } }
+        return links.get(id);
+    }
+}
