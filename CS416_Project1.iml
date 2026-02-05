@@ -19,5 +19,6 @@
         <jarDirectory url="file://$MODULE_DIR$/.idea/libraries" recursive="false" />
       </library>
     </orderEntry>
+    <orderEntry type="library" name="json-20251224" level="project" />
   </component>
 </module>
