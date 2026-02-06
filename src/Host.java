@@ -86,15 +86,27 @@ public class Host {
     }
 
     public static void main(String[] args) {
-        if (args.length != 1) {
-            System.out.println("Usage: java Host <hostID>");
+        if (args.length < 1) {
+            System.out.println("Usage: java Host <hostID> [configFile]");
             return;
         }
 
-        Host host = new Host(args[0]);
+        String hostId = args[0];
+        String configFile = (args.length > 1) ? args[1] : "resources/config.json";
+
+        Host host = new Host(hostId);
         try {
-            host.initialize("resources/config.json");
+            host.initialize(configFile);
         } catch (IOException e) {
+            if (args.length > 1) {
+                System.out.println("Failed to load config from " + configFile + ", trying default resource...");
+                try {
+                    host.initialize("resources/config.json");
+                    return;
+                } catch (IOException ex) {
+                    throw new RuntimeException("Failed to load default config", ex);
+                }
+            }
             throw new RuntimeException(e);
         }
     }

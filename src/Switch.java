@@ -144,13 +144,30 @@ public class Switch {
     }
 
     public static void main(String[] args) {
+        if (args.length < 1) {
+            System.out.println("Usage: java Switch <switchID> [configFile]");
+            return;
+        }
+
         String switchId = args[0];
+        String configFile = (args.length > 1) ? args[1] : "resources/config.json";
+
         Switch sw = new Switch(switchId);
         try {
-            sw.initialize("resources/config.json");
+            sw.initialize(configFile);
             sw.start();
         } catch (IOException e) {
-            System.err.println("Failed to initialize switch: " + e.getMessage());
+            if (args.length > 1) {
+                System.out.println("Failed to load config from " + configFile + ", trying default resource...");
+                try {
+                    sw.initialize("resources/config.json");
+                    sw.start();
+                } catch (IOException ex) {
+                    System.err.println("Failed to initialize switch with default config: " + ex.getMessage());
+                }
+            } else {
+                System.err.println("Failed to initialize switch: " + e.getMessage());
+            }
         }
     }
 }
