@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Router R1" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="Router" />
+    <module name="CS416_Project1" />
+    <option name="PROGRAM_PARAMETERS" value="R1" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

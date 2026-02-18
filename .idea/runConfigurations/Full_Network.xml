@@ -2,7 +2,8 @@
   <configuration default="false" name="Full Network" type="CompoundRunConfigurationType">
     <toRun name="Switch S1" type="Application" />
     <toRun name="Switch S2" type="Application" />
-    <toRun name="Switch S3" type="Application" />
+    <toRun name="Router R1" type="Application" />
+    <toRun name="Router R2" type="Application" />
     <toRun name="Host A" type="Application" />
     <toRun name="Host B" type="Application" />
     <toRun name="Host C" type="Application" />
