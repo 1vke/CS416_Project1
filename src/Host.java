@@ -9,6 +9,10 @@ public class Host {
     private String switchIP;
     private int switchPort;
 
+    private String srcIP;
+    private String destMac;
+
+
     private NetworkLayer networkLayer;
 
     private Host(String hostID) {
@@ -18,10 +22,14 @@ public class Host {
 
     @SuppressWarnings("SameParameterValue")
     private void initialize(String configFile) throws IOException {
-        //load config to find ip, port, and neighbors
+        //load config
         Config config = new Config(configFile);
+
         String myIp = config.getIp(hostID);
         int myPort = config.getPort(hostID);
+
+//        String srcIP = config.getVirtualIp(hostID);
+//        String destMAC = config.getGateway(hostID);
 
         String switchId = config.getNeighbors(hostID).getFirst();
         switchIP = config.getIp(switchId);
@@ -31,6 +39,8 @@ public class Host {
 
         System.out.println("Host " + hostID + " initialized on " +
                 myIp + " : " + myPort);
+        System.out.println("Virtual IP: " + srcIP);
+        System.out.println("Gateway MAC: " + destMac);
 
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
             executor.submit(this::sender);
@@ -43,13 +53,13 @@ public class Host {
     private void sender() {
         Scanner scanner = new Scanner(System.in);
         while (true) {
-            System.out.print("Destination MAC: ");
-            String destMac = scanner.nextLine();
+            System.out.println("Virtual destination IP: ");
+            String destIP = scanner.nextLine();
 
             System.out.print("Message: ");
             String message = scanner.nextLine();
 
-            String frame = mac + ":" + destMac + ":" + message;
+            String frame = mac + ":" + destMac + ":" + srcIP + ":" + destIP + ":" + message;
 
             try {
                 networkLayer.send(frame, switchIP, switchPort);
@@ -65,19 +75,21 @@ public class Host {
         while (true) {
             try {
                 NetworkLayer.Data data = networkLayer.receive();
-                String[] parts = data.frame().split(":", 3);
-                if (parts.length < 3){
+                String[] parts = data.frame().split(":", 5);
+                if (parts.length < 5){
                     continue;
                 }
 
                 String srcMac = parts[0];
                 String destMac = parts[1];
-                String message = parts[2];
+                String srcIP = parts[2];
+                String destIP = parts[3];
+                String message = parts[4];
 
                 if (destMac.equals(mac)) {
                     System.out.println("Message from " + srcMac + ": " + message);
                 } else {
-                    System.out.println("Debug: MAC address mismatch - received " + destMac + " but I am " + mac + ". (Flooded frame)");
+                    System.out.println("Debug: MAC address mismatch - received " + destMac + " Mac: " + mac + ". (Flooded frame)");
                 }
             } catch (IOException e) {
                 System.out.println("Receive error");
