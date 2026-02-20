@@ -1,19 +1,56 @@
 {
   "devices": [
-    { "id": "A", "ip": "10.222.100.129", "port": 5001 },
-    { "id": "B", "ip": "10.222.100.129", "port": 5002 },
-    { "id": "C", "ip": "10.222.119.166", "port": 5003 },
-    { "id": "D", "ip": "10.222.120.76", "port": 5004 },
-    { "id": "S1", "ip": "10.222.100.129", "port": 6001 },
-    { "id": "S2", "ip": "10.222.119.166", "port": 6002 },
-    { "id": "S3", "ip": "10.222.120.76", "port": 6003 }
+
+    { "id": "A",
+      "ip": "127.0.0.1",
+      "port": 5001,
+      "type": "host",
+      "virtualIPs": ["subnet1.A"],
+      "gateway": "subnet1.R1" },
+
+    { "id": "B",
+      "ip": "127.0.0.1",
+      "port": 5002, "type": "host",
+      "virtualIPs": ["subnet1.B"],
+      "gateway": "subnet1.R1" },
+
+    { "id": "C",
+      "ip": "127.0.0.1",
+      "port": 5003, "type": "host",
+      "virtualIPs": ["subnet3.C"],
+      "gateway": "subnet3.R2" },
+
+    { "id": "D",
+      "ip": "127.0.0.1",
+      "port": 5004, "type": "host",
+      "virtualIPs": ["subnet3.D"],
+      "gateway": "subnet3.R2" },
+
+    { "id": "S1",
+      "ip": "127.0.0.1",
+      "port": 6001, "type": "switch" },
+    { "id": "S2", "ip": "127.0.0.1",
+      "port": 6002, "type": "switch" },
+
+    { "id": "R1",
+      "ip": "127.0.0.1",
+      "port": 7001, "type": "router",
+      "virtualIPs": ["subnet1.R1", "subnet2.R1"] },
+
+    { "id": "R2",
+      "ip": "127.0.0.1",
+      "port": 7002, "type": "router",
+      "virtualIPs": ["subnet2.R2", "subnet3.R2"] }
+
   ],
+
   "links": [
     ["A", "S1"],
     ["B", "S1"],
-    ["S1", "S2"],
-    ["C", "S3"],
-    ["S2", "S3"],
-    ["D", "S3"]
+    ["S1", "R1"],
+    ["R1", "R2"],
+    ["R2", "S2"],
+    ["S2", "C"],
+    ["S2", "D"]
   ]
 }
