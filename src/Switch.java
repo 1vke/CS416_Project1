@@ -99,8 +99,11 @@ public class Switch {
     }
 
     private void flood(String frame, PortInfo incomingPort) {
+        System.out.println("DEBUG: Flooding frame from " + incomingPort.ip + ":" + incomingPort.port);
         for (PortInfo port : virtualPorts.values()) {
-            if (!port.equals(incomingPort)) {
+            boolean eq = port.equals(incomingPort);
+            System.out.println("DEBUG: Checking port " + port.ip + ":" + port.port + " equals incoming? " + eq);
+            if (!eq) {
                 forwardFrame(frame, port);
             }
         }
