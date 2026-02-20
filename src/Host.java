@@ -28,8 +28,14 @@ public class Host {
         String myIp = config.getIp(hostID);
         int myPort = config.getPort(hostID);
 
-        String srcIP = config.getVirtualIp(hostID);
-        String destMAC = config.getGateway(hostID);
+        this.srcIP = config.getVirtualIp(hostID);
+        String gateway = config.getGateway(hostID);
+        
+        if (gateway != null && gateway.contains(".")) {
+            this.destMac = gateway.substring(gateway.lastIndexOf('.') + 1);
+        } else {
+            this.destMac = gateway;
+        }
 
         String switchId = config.getNeighbors(hostID).getFirst();
         switchIP = config.getIp(switchId);
@@ -87,7 +93,7 @@ public class Host {
                 String message = parts[4];
 
                 if (destMac.equals(mac)) {
-                    System.out.println("Message from " + srcMac + ": " + message);
+                    System.out.println("Message from " + srcIP + ": " + message);
                 } else {
                     System.out.println("Debug: MAC address mismatch - received " + destMac + " Mac: " + mac + ". (Flooded frame)");
                 }

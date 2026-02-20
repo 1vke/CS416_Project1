@@ -52,5 +52,15 @@
     ["R2", "S2"],
     ["S2", "C"],
     ["S2", "D"]
-  ]
+  ],
+  "routingTables": {
+    "R1": [
+      { "subnet": "subnet1", "nextHop": "S1" },
+      { "subnet": "subnet3", "nextHop": "subnet2.R2" }
+    ],
+    "R2": [
+      { "subnet": "subnet1", "nextHop": "subnet2.R1" },
+      { "subnet": "subnet3", "nextHop": "S2" }
+    ]
+  }
 }

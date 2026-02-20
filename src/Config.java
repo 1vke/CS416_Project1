@@ -10,6 +10,7 @@ public class Config {
 
     public Map<String, DeviceInfo> devices = new HashMap<>();
     public Map<String, List<String>> links = new HashMap<>();
+    public Map<String, List<RoutingTableEntry>> routingTables = new HashMap<>();
 
     public static class DeviceInfo {
         public String id;
@@ -22,6 +23,16 @@ public class Config {
             this.id = id;
             this.ip = ip;
             this.port = port;
+        }
+    }
+
+    public static class RoutingTableEntry {
+        public String subnet;
+        public String nextHop;
+
+        public RoutingTableEntry(String subnet, String nextHop) {
+            this.subnet = subnet;
+            this.nextHop = nextHop;
         }
     }
 
@@ -76,6 +87,19 @@ public class Config {
             links.get(a).add(b);
             links.get(b).add(a);
         }
+
+        if (json.has("routingTables")) {
+            JSONObject rtObj = json.getJSONObject("routingTables");
+            for (String routerId : rtObj.keySet()) {
+                JSONArray entries = rtObj.getJSONArray(routerId);
+                List<RoutingTableEntry> list = new ArrayList<>();
+                for (int i = 0; i < entries.length(); i++) {
+                    JSONObject entry = entries.getJSONObject(i);
+                    list.add(new RoutingTableEntry(entry.getString("subnet"), entry.getString("nextHop")));
+                }
+                routingTables.put(routerId, list);
+            }
+        }
     }
 
     public String getIp(String id) {
@@ -98,5 +122,9 @@ public class Config {
 
     public String getGateway(String id) {
         return devices.get(id).gateway;
+    }
+
+    public List<RoutingTableEntry> getRoutingTable(String routerId) {
+        return routingTables.get(routerId);
     }
 }

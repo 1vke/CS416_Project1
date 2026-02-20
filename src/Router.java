@@ -33,12 +33,12 @@ public class Router {
     }
 
     private void loadRoutingTable(Config config) {
-        /*List<Config.RoutingTableEntry> entries = config.getRoutingTable(routerId);
+        List<Config.RoutingTableEntry> entries = config.getRoutingTable(routerId);
         if (entries != null) {
             for (Config.RoutingTableEntry entry : entries) {
-                routingTable.put(entry.subnet, new RoutingEntry(entry.subnet, entry.nextHopOrPort));
+                routingTable.put(entry.subnet, new RoutingEntry(entry.subnet, entry.nextHop));
             }
-        }*/
+        }
 
         System.out.println("\n+-------------------------------------------+");
         System.out.println("| Routing Table for " + String.format("%-23s", routerId) + "|");
