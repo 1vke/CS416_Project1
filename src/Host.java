@@ -10,8 +10,7 @@ public class Host {
     private int switchPort;
 
     private String srcIP;
-    private String destMac;
-
+    private String gatewayMac;
 
     private NetworkLayer networkLayer;
 
@@ -32,9 +31,9 @@ public class Host {
         String gateway = config.getGateway(hostID);
         
         if (gateway != null && gateway.contains(".")) {
-            this.destMac = gateway.substring(gateway.lastIndexOf('.') + 1);
+            this.gatewayMac = gateway.substring(gateway.lastIndexOf('.') + 1);
         } else {
-            this.destMac = gateway;
+            this.gatewayMac = gateway;
         }
 
         String switchId = config.getNeighbors(hostID).getFirst();
@@ -46,7 +45,7 @@ public class Host {
         System.out.println("Host " + hostID + " initialized on " +
                 myIp + " : " + myPort);
         System.out.println("Virtual IP: " + srcIP);
-        System.out.println("Gateway MAC: " + destMac);
+        System.out.println("Gateway MAC: " + gatewayMac);
 
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
             executor.submit(this::sender);
@@ -65,7 +64,14 @@ public class Host {
             System.out.print("Message: ");
             String message = scanner.nextLine();
 
-            String frame = mac + ":" + destMac + ":" + srcIP + ":" + destIP + ":" + message;
+            String targetMac;
+            if (extractSubnet(srcIP).equals(extractSubnet(destIP))) {
+                targetMac = extractHostId(destIP);
+            } else {
+                targetMac = gatewayMac;
+            }
+
+            String frame = mac + ":" + targetMac + ":" + srcIP + ":" + destIP + ":" + message;
 
             try {
                 networkLayer.send(frame, switchIP, switchPort);
@@ -73,6 +79,22 @@ public class Host {
                 System.out.println("Host " + hostID + " Failed to send frame");
             }
         }
+    }
+
+    private String extractSubnet(String virtualIP) {
+        int dotIndex = virtualIP.indexOf('.');
+        if (dotIndex > 0) {
+            return virtualIP.substring(0, dotIndex);
+        }
+        return virtualIP;
+    }
+
+    private String extractHostId(String virtualIP) {
+        int dotIndex = virtualIP.lastIndexOf('.');
+        if (dotIndex > 0 && dotIndex < virtualIP.length() - 1) {
+            return virtualIP.substring(dotIndex + 1);
+        }
+        return virtualIP;
     }
 
     //receiver
@@ -86,10 +108,8 @@ public class Host {
                     continue;
                 }
 
-                String srcMac = parts[0];
                 String destMac = parts[1];
                 String srcIP = parts[2];
-                String destIP = parts[3];
                 String message = parts[4];
 
                 if (destMac.equals(mac)) {
