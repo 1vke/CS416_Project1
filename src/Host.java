@@ -28,8 +28,8 @@ public class Host {
         String myIp = config.getIp(hostID);
         int myPort = config.getPort(hostID);
 
-        String srcIP = config.getVirtualIp(hostID);
-        String destMAC = config.getGateway(hostID);
+        this.srcIP = config.getVirtualIp(hostID);
+        this.destMac = config.getGateway(hostID);
 
         String switchId = config.getNeighbors(hostID).getFirst();
         switchIP = config.getIp(switchId);
