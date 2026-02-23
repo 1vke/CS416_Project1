@@ -2,14 +2,14 @@
   "devices": [
 
     { "id": "A",
-      "ip": "10.222.105.188",
+      "ip": "10.222.73.97",
       "port": 5001,
       "type": "host",
       "virtualIPs": ["subnet1.A"],
       "gateway": "subnet1.R1" },
 
     { "id": "B",
-      "ip": "10.222.105.188",
+      "ip": "10.222.73.97",
       "port": 5002, "type": "host",
       "virtualIPs": ["subnet1.B"],
       "gateway": "subnet1.R1" },
@@ -29,7 +29,8 @@
     { "id": "S1",
       "ip": "10.222.73.97",
       "port": 6001, "type": "switch" },
-    { "id": "S2", "ip": "10.222.120.76",
+    
+    { "id": "S2", "ip": "10.222.102.209",
       "port": 6002, "type": "switch" },
 
     { "id": "R1",
@@ -38,7 +39,7 @@
       "virtualIPs": ["subnet1.R1", "subnet2.R1"] },
 
     { "id": "R2",
-      "ip": "10.222.120.76",
+      "ip": "10.222.102.209",
       "port": 7002, "type": "router",
       "virtualIPs": ["subnet2.R2", "subnet3.R2"] }
 
