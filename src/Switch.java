@@ -58,15 +58,17 @@ public class Switch {
         String frame = data.frame();
         String senderIp = data.srcIp();
         int senderPort = data.srcPort();
-        String[] parts = frame.split(":", 3);
-        if (parts.length < 3) {
-            System.err.println("Invalid frame format: " + frame);
+
+        Packet packet = Packet.parse(frame);
+        if (packet == null) {
+            System.err.println("Invalid packet format: " + frame);
             return;
         }
-        String srcMAC = parts[0];
-        String destMAC = parts[1];
 
-        System.out.println("[" + switchId + "] Recieve: " + frame +
+        String srcMAC = packet.getSrcMAC();
+        String destMAC = packet.getDestMAC();
+
+        System.out.println("[" + switchId + "] Receive: " + frame +
                 " from " + senderIp + ":" + senderPort);
 
         PortInfo incomingPort = new PortInfo(senderIp, senderPort);

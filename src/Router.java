@@ -82,32 +82,32 @@ public class Router {
         String senderIp = data.srcIp();
         int senderPort = data.srcPort();
 
-        String[] parts = frame.split(":", 5);
-        if (parts.length < 5) {
-            System.err.println("Invalid frame format: " + frame);
+        Packet packet = Packet.parse(frame);
+        if (packet == null) {
+            System.err.println("Invalid packet format: " + frame);
             return;
         }
 
-        String srcMAC = parts[0];
-        String destMAC = parts[1];
-        String srcIP = parts[2];
-        String destIP = parts[3];
-        String message = parts[4];
-
-        System.out.println("\n[" + routerId + "] RECEIVED Frame:");
-        System.out.println("  Virtual Source MAC: " + srcMAC);
-        System.out.println("  Virtual Dest MAC: " + destMAC);
-        System.out.println("  Virtual Source IP: " + srcIP);
-        System.out.println("  Virtual Dest IP: " + destIP);
-        System.out.println("  Message: " + message);
+        System.out.println("\n[" + routerId + "] RECEIVED Packet:");
+        System.out.println("  Type: " + (packet.getType() == Packet.TYPE_USER ? "USER" : "ROUTING"));
+        System.out.println("  Virtual Source MAC: " + packet.getSrcMAC());
+        System.out.println("  Virtual Dest MAC: " + packet.getDestMAC());
+        System.out.println("  Virtual Source IP: " + packet.getSrcIP());
+        System.out.println("  Virtual Dest IP: " + packet.getDestIP());
+        System.out.println("  Payload: " + packet.getPayload());
         System.out.println("  From: " + senderIp + ":" + senderPort);
 
-        if (!destMAC.equals(routerId)) {
-            System.out.println("[" + routerId + "] Frame not for me (dest MAC: " + destMAC + "), dropping.");
+        if (!packet.getDestMAC().equals(routerId)) {
+            System.out.println("[" + routerId + "] Packet not for me (dest MAC: " + packet.getDestMAC() + "), dropping.");
             return;
         }
 
-        String destSubnet = extractSubnet(destIP);
+        if (packet.getType() == Packet.TYPE_ROUTING) {
+            processRoutingUpdate(packet);
+            return;
+        }
+
+        String destSubnet = extractSubnet(packet.getDestIP());
 
         RoutingEntry routingEntry = routingTable.get(destSubnet);
         if (routingEntry == null) {
@@ -130,7 +130,7 @@ public class Router {
                 return;
             }
         } else {
-            newDestMAC = extractHostId(destIP);
+            newDestMAC = extractHostId(packet.getDestIP());
 
             outgoingPort = findPortByNeighborId(routingEntry.nextHopOrPort);
 
@@ -140,19 +140,24 @@ public class Router {
             }
         }
 
-        String newSrcMAC = routerId;
+        packet.setSrcMAC(routerId);
+        packet.setDestMAC(newDestMAC);
 
-        String newFrame = newSrcMAC + ":" + newDestMAC + ":" + srcIP + ":" + destIP + ":" + message;
-
-        System.out.println("\n[" + routerId + "] FORWARDING Frame:");
-        System.out.println("  Virtual Source MAC: " + newSrcMAC);
-        System.out.println("  Virtual Dest MAC: " + newDestMAC);
-        System.out.println("  Virtual Source IP: " + srcIP);
-        System.out.println("  Virtual Dest IP: " + destIP);
-        System.out.println("  Message: " + message);
+        System.out.println("\n[" + routerId + "] FORWARDING Packet:");
+        System.out.println("  Type: " + (packet.getType() == Packet.TYPE_USER ? "USER" : "ROUTING"));
+        System.out.println("  Virtual Source MAC: " + packet.getSrcMAC());
+        System.out.println("  Virtual Dest MAC: " + packet.getDestMAC());
+        System.out.println("  Virtual Source IP: " + packet.getSrcIP());
+        System.out.println("  Virtual Dest IP: " + packet.getDestIP());
+        System.out.println("  Payload: " + packet.getPayload());
         System.out.println("  To: " + outgoingPort.ip + ":" + outgoingPort.port);
 
-        forwardFrame(newFrame, outgoingPort);
+        forwardFrame(packet.toString(), outgoingPort);
+    }
+
+    private void processRoutingUpdate(Packet packet) {
+        System.out.println("[" + routerId + "] Processing routing update from " + packet.getSrcIP());
+        // TODO: Implement dynamic routing logic (DV or LS) here
     }
 
     private String extractSubnet(String virtualIP) {

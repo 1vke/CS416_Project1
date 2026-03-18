@@ -71,10 +71,10 @@ public class Host {
                 targetMac = gatewayMac;
             }
 
-            String frame = mac + ":" + targetMac + ":" + srcIP + ":" + destIP + ":" + message;
+            Packet packet = new Packet(Packet.TYPE_USER, mac, targetMac, srcIP, destIP, message);
 
             try {
-                networkLayer.send(frame, switchIP, switchPort);
+                networkLayer.send(packet.toString(), switchIP, switchPort);
             } catch (IOException e) {
                 System.out.println("Host " + hostID + " Failed to send frame");
             }
@@ -103,19 +103,13 @@ public class Host {
         while (true) {
             try {
                 NetworkLayer.Data data = networkLayer.receive();
-                String[] parts = data.frame().split(":", 5);
-                if (parts.length < 5){
-                    continue;
-                }
+                Packet packet = Packet.parse(data.frame());
+                if (packet == null) continue;
 
-                String destMac = parts[1];
-                String srcIP = parts[2];
-                String message = parts[4];
-
-                if (destMac.equals(mac)) {
-                    System.out.println("Message from " + srcIP + ": " + message);
+                if (packet.getDestMAC().equals(mac)) {
+                    System.out.println("Message from " + packet.getSrcIP() + ": " + packet.getPayload());
                 } else {
-                    System.out.println("Debug: MAC address mismatch - received " + destMac + " Mac: " + mac + ". (Flooded frame)");
+                    System.out.println("Debug: MAC address mismatch - received " + packet.getDestMAC() + " Mac: " + mac + ". (Flooded frame)");
                 }
             } catch (IOException e) {
                 System.out.println("Receive error");
