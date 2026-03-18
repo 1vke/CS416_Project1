@@ -29,28 +29,32 @@ public class Router {
             virtualPorts.put(portName, new PortInfo(neighborIp, neighborPort, neighborId));
         }
 
-        loadRoutingTable(config);
+        startRoutingTable(config);
     }
 
-    private void loadRoutingTable(Config config) {
-        List<Config.RoutingTableEntry> entries = config.getRoutingTable(routerId);
-        if (entries != null) {
-            for (Config.RoutingTableEntry entry : entries) {
-                routingTable.put(entry.subnet, new RoutingEntry(entry.subnet, entry.nextHop));
-            }
+    private void startRoutingTable(Config config) {
+        String myVip = config.getVirtualIp(routerId);
+        if (myVip != null) {
+            String mySubnet = extractSubnet(myVip);
+            routingTable.put(mySubnet, new RoutingEntry(mySubnet, routerId, 0));
         }
 
-        System.out.println("\n+-------------------------------------------+");
-        System.out.println("| Routing Table for " + String.format("%-23s", routerId) + "|");
-        System.out.println("+----------------------+--------------------+");
-        System.out.println("| Subnet Prefix        | Next-hop/Exit Port |");
-        System.out.println("+----------------------+--------------------+");
+        printRoutingTable();
+    }
+
+    private void printRoutingTable() {
+        System.out.println("\n+--------------------------------------------------+");
+        System.out.println("| Routing Table for " + String.format("%-30s", routerId) + "|");
+        System.out.println("+----------------------+----------------+--------+");
+        System.out.println("| Subnet               | Next-Hop       | Cost   |");
+        System.out.println("+----------------------+----------------+--------+");
         for (Map.Entry<String, RoutingEntry> entry : routingTable.entrySet()) {
-            System.out.printf("| %-20s | %-18s |%n",
+            System.out.printf("| %-20s | %-14s | %-6d |%n",
                     entry.getKey(),
-                    entry.getValue().nextHopOrPort);
+                    entry.getValue().nextHopOrPort,
+                    entry.getValue().cost);
         }
-        System.out.println("+----------------------+--------------------+\n");
+        System.out.println("+----------------------+----------------+--------+\n");
     }
 
     public void initialize(String configFile) throws IOException {
@@ -156,8 +160,46 @@ public class Router {
     }
 
     private void processRoutingUpdate(Packet packet) {
-        System.out.println("[" + routerId + "] Processing routing update from " + packet.getSrcIP());
-        // TODO: Implement dynamic routing logic (DV or LS) here
+        String neighborId = packet.getSrcMAC();
+        String payload    = packet.getPayload();
+
+        System.out.println("[" + routerId + "] Processing DV update from " + neighborId + ": " + payload);
+
+        if (payload == null || payload.isBlank()) return;
+
+        boolean changed = false;
+
+        String[] entries = payload.split(",");
+        for (String entry : entries) {
+            String[] parts = entry.split(":");
+            if (parts.length != 2) continue;
+
+            String subnet = parts[0].trim();
+            int advertisedCost;
+            try {
+                advertisedCost = Integer.parseInt(parts[1].trim());
+            } catch (NumberFormatException e) {
+                System.err.println("[" + routerId + "] invalid cost value in DV payload: " + entry);
+                continue;
+            }
+
+            int newCost = advertisedCost + 1;
+
+            RoutingEntry current = routingTable.get(subnet);
+            int currentCost = (current != null) ? current.cost : Integer.MAX_VALUE;
+
+            if (newCost < currentCost) {
+                routingTable.put(subnet, new RoutingEntry(subnet, neighborId, newCost));
+                System.out.println("[" + routerId + "] Updated: " + subnet
+                        + " cost " + currentCost + " -> " + newCost
+                        + " via " + neighborId);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            printRoutingTable();
+        }
     }
 
     private String extractSubnet(String virtualIP) {
@@ -223,10 +265,12 @@ public class Router {
     private static class RoutingEntry {
         String subnet;
         String nextHopOrPort;
+        int cost;
 
-        RoutingEntry(String subnet, String nextHopOrPort) {
+        RoutingEntry(String subnet, String nextHopOrPort, int cost) {
             this.subnet = subnet;
             this.nextHopOrPort = nextHopOrPort;
+            this.cost = cost;
         }
     }
 
