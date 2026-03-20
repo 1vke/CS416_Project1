@@ -27,7 +27,7 @@ public class Host {
         String myIp = config.getIp(hostID);
         int myPort = config.getPort(hostID);
 
-        this.srcIP = config.getVirtualIp(hostID);
+        this.srcIP = config.getIp(hostID);
         String gateway = config.getGateway(hostID);
         
         if (gateway != null && gateway.contains(".")) {
@@ -81,12 +81,9 @@ public class Host {
         }
     }
 
-    private String extractSubnet(String virtualIP) {
-        int dotIndex = virtualIP.indexOf('.');
-        if (dotIndex > 0) {
-            return virtualIP.substring(0, dotIndex);
-        }
-        return virtualIP;
+    private String extractSubnet(String IP) {
+        int lastDot = IP.lastIndexOf('.');
+        return IP.substring(0, lastDot);
     }
 
     private String extractHostId(String virtualIP) {
