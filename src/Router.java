@@ -163,11 +163,12 @@ public class Router {
         String neighborId = packet.getSrcMAC();
         String payload    = packet.getPayload();
 
-        System.out.println("[" + routerId + "] Processing DV update from " + neighborId + ": " + payload);
-
         if (payload == null || payload.isBlank()) return;
 
         boolean changed = false;
+
+        System.out.println("\n[" + routerId + "] --- Routing Update Process from Neighbor: " + neighborId + " ---");
+        System.out.println("[" + routerId + "] Received DV Payload: " + payload);
 
         String[] entries = payload.split(",");
         for (String entry : entries) {
@@ -187,18 +188,25 @@ public class Router {
 
             RoutingEntry current = routingTable.get(subnet);
             int currentCost = (current != null) ? current.cost : Integer.MAX_VALUE;
+            String currentNextHop = (current != null) ? current.nextHopOrPort : "None";
 
             if (newCost < currentCost) {
                 routingTable.put(subnet, new RoutingEntry(subnet, neighborId, newCost));
-                System.out.println("[" + routerId + "] Updated: " + subnet
-                        + " cost " + currentCost + " -> " + newCost
-                        + " via " + neighborId);
+                System.out.printf("[" + routerId + "]   [UPDATE] Subnet: %-15s | Cost: %-4s -> %-4d | Next-Hop: %-6s -> %s%n", 
+                                  subnet, (currentCost == Integer.MAX_VALUE ? "INF" : String.valueOf(currentCost)), newCost, currentNextHop, neighborId);
                 changed = true;
+            } else {
+                System.out.printf("[" + routerId + "]   [IGNORE] Subnet: %-15s | Computed Cost: %-4d (>= Current: %s) | Kept Next-Hop: %s%n", 
+                                  subnet, newCost, (currentCost == Integer.MAX_VALUE ? "INF" : String.valueOf(currentCost)), currentNextHop);
             }
         }
+        System.out.println("[" + routerId + "] -----------------------------------------------------------");
 
         if (changed) {
+            System.out.println("[" + routerId + "] Routing table converged to a new state:");
             printRoutingTable();
+        } else {
+            System.out.println("[" + routerId + "] No changes to routing table. Already optimal for these routes.");
         }
     }
 
@@ -235,6 +243,19 @@ public class Router {
             System.err.println("Error forwarding frame to " + port.ip + ":" + port.port +
                     " - " + e.getMessage());
         }
+    }
+
+    /**
+     * Standardizes the payload format for distance-vector routing updates.
+     * Generates a CSV string of "Subnet:Cost" pairs.
+     */
+    private String generateRoutingPayload() {
+        StringBuilder sb = new StringBuilder();
+        for (RoutingEntry entry : routingTable.values()) {
+            if (!sb.isEmpty()) sb.append(",");
+            sb.append(entry.subnet).append(":").append(entry.cost);
+        }
+        return sb.toString();
     }
 
     private static class PortInfo {
