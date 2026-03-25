@@ -2,6 +2,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.Executors;
+import java.util.TimeUnit;
 
 public class Router {
     private final String routerId;
@@ -10,11 +14,12 @@ public class Router {
     private final Map<String, PortInfo> virtualPorts;
     private final Map<String, RoutingEntry> routingTable;
     private NetworkLayer networkLayer;
+    private ScheduledExecutorService scheduler;
 
     public Router(String routerId) {
         this.routerId = routerId;
         this.virtualPorts = new HashMap<>();
-        this.routingTable = new HashMap<>();
+        this.routingTable = new ConcurrentHashMap<>();
     }
 
     private void loadConfig(Config config) {
@@ -62,6 +67,7 @@ public class Router {
         loadConfig(config);
 
         this.networkLayer = new NetworkLayer(myPort);
+        startPeriodicUpdate();
 
         System.out.println("Router " + routerId + " initialized on " + myIp + ":" + myPort);
         System.out.println("Virtual ports created for neighbors: " + virtualPorts.keySet());
@@ -79,6 +85,47 @@ public class Router {
                 System.err.println("Error receiving frame: " + e.getMessage());
             }
         }
+    }
+
+    //Periodic updates
+    private void startPeriodicUpdate() {
+        scheduler = Executors.newScheduledThreadPool(1);
+        
+        scheduler.scheduleAtFixedRate(() -> {
+            try{
+                long now = System.currentTimeMillis();
+                long TIMEOUT = 15000;
+
+                for (RoutingEntry entry : routingTable.values()) {
+                if (entry.cost == 0) continue;
+
+                if (now - entry.lastUpdated > TIMEOUT) {
+                    routingTable.remove(entry.subnet);
+                }
+            }
+
+                String payload = generateRoutingPayload();
+
+                for(PortInfo port : virtualPorts.values()){
+                    Packet packet = new Packet(
+                        Packet.TYPE_ROUTING,
+                        routerId,
+                        port.neighborId,
+                        "0.0",
+                        "0.0",
+                        payload
+                    );
+
+                    System.out.println("[" + routerId + "] sending routing update to " + port.ip + ":" + port.port);
+                    networkLayer.send(packet.toString(), port.ip, port.port);
+                }
+            }
+            catch(Exception e){
+                System.out.println("[" + routerId + "]  error sending updates");
+            }
+        }
+        , 0, 5, TimeUnit.SECONDS
+        );
     }
 
     private void handleFrame(NetworkLayer.Data data) {
@@ -187,6 +234,10 @@ public class Router {
             int newCost = advertisedCost + 1;
 
             RoutingEntry current = routingTable.get(subnet);
+            if (current != null && current.nextHopOrPort.equals(neighborId)) {
+                current.lastUpdated = System.currentTimeMillis();
+            }
+
             int currentCost = (current != null) ? current.cost : Integer.MAX_VALUE;
             String currentNextHop = (current != null) ? current.nextHopOrPort : "None";
 
@@ -287,11 +338,13 @@ public class Router {
         String subnet;
         String nextHopOrPort;
         int cost;
+        long lastUpdated;
 
         RoutingEntry(String subnet, String nextHopOrPort, int cost) {
             this.subnet = subnet;
             this.nextHopOrPort = nextHopOrPort;
             this.cost = cost;
+            this.lastUpdated = System.currentTimeMillis();
         }
     }
 
