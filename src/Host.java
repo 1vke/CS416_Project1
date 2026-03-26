@@ -27,7 +27,7 @@ public class Host {
         String myIp = config.getIp(hostID);
         int myPort = config.getPort(hostID);
 
-        this.srcIP = config.getIp(hostID);
+        this.srcIP = config.getVirtualIps(hostID).getFirst();
         String gateway = config.getGateway(hostID);
         
         if (gateway != null && gateway.contains(".")) {

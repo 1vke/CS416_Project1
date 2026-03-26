@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.Executors;
-import java.util.TimeUnit;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class Router {
     private final String routerId;
@@ -38,8 +38,8 @@ public class Router {
     }
 
     private void startRoutingTable(Config config) {
-        String myVip = config.getVirtualIp(routerId);
-        if (myVip != null) {
+        List<String> myVips = config.getVirtualIps(routerId);
+        for (String myVip : myVips) {
             String mySubnet = extractSubnet(myVip);
             routingTable.put(mySubnet, new RoutingEntry(mySubnet, routerId, 0));
         }
@@ -107,17 +107,19 @@ public class Router {
                 String payload = generateRoutingPayload();
 
                 for(PortInfo port : virtualPorts.values()){
-                    Packet packet = new Packet(
-                        Packet.TYPE_ROUTING,
-                        routerId,
-                        port.neighborId,
-                        "0.0",
-                        "0.0",
-                        payload
-                    );
+                    if (port.neighborId.startsWith("R")) { // Only send to routers
+                        Packet packet = new Packet(
+                            Packet.TYPE_ROUTING,
+                            routerId,
+                            port.neighborId,
+                            "0.0",
+                            "0.0",
+                            payload
+                        );
 
-                    System.out.println("[" + routerId + "] sending routing update to " + port.ip + ":" + port.port);
-                    networkLayer.send(packet.toString(), port.ip, port.port);
+                        System.out.println("[" + routerId + "] sending routing update to " + port.ip + ":" + port.port);
+                        networkLayer.send(packet.toString(), port.ip, port.port);
+                    }
                 }
             }
             catch(Exception e){
@@ -139,14 +141,7 @@ public class Router {
             return;
         }
 
-        System.out.println("\n[" + routerId + "] RECEIVED Packet:");
-        System.out.println("  Type: " + (packet.getType() == Packet.TYPE_USER ? "USER" : "ROUTING"));
-        System.out.println("  Virtual Source MAC: " + packet.getSrcMAC());
-        System.out.println("  Virtual Dest MAC: " + packet.getDestMAC());
-        System.out.println("  Virtual Source IP: " + packet.getSrcIP());
-        System.out.println("  Virtual Dest IP: " + packet.getDestIP());
-        System.out.println("  Payload: " + packet.getPayload());
-        System.out.println("  From: " + senderIp + ":" + senderPort);
+        logPacket(packet, "RECEIVED", "From: " + senderIp + ":" + senderPort);
 
         if (!packet.getDestMAC().equals(routerId)) {
             System.out.println("[" + routerId + "] Packet not for me (dest MAC: " + packet.getDestMAC() + "), dropping.");
@@ -171,39 +166,49 @@ public class Router {
         String newDestMAC;
         PortInfo outgoingPort;
 
-        if (routingEntry.nextHopOrPort.contains(".")) {
-            newDestMAC = extractHostId(routingEntry.nextHopOrPort);
-
+        if (routingEntry.cost == 0) {
+            // Directly connected subnet
+            newDestMAC = extractHostId(packet.getDestIP());
             outgoingPort = findPortByNeighborId(newDestMAC);
 
             if (outgoingPort == null) {
-                System.err.println("[" + routerId + "] Cannot find port for next-hop router: " + newDestMAC);
-                return;
+                // Not a directly connected router/host, must be on a switch.
+                // Find a switch neighbor.
+                for (PortInfo p : virtualPorts.values()) {
+                    if (p.neighborId.startsWith("S")) {
+                        outgoingPort = p;
+                        break;
+                    }
+                }
             }
         } else {
-            newDestMAC = extractHostId(packet.getDestIP());
+            // Remote subnet
+            newDestMAC = routingEntry.nextHopOrPort;
+            outgoingPort = findPortByNeighborId(newDestMAC);
+        }
 
-            outgoingPort = findPortByNeighborId(routingEntry.nextHopOrPort);
-
-            if (outgoingPort == null) {
-                System.err.println("[" + routerId + "] Cannot find outgoing port for neighbor: " + routingEntry.nextHopOrPort);
-                return;
-            }
+        if (outgoingPort == null) {
+            System.err.println("[" + routerId + "] Cannot find outgoing port for next-hop: " + routingEntry.nextHopOrPort);
+            return;
         }
 
         packet.setSrcMAC(routerId);
         packet.setDestMAC(newDestMAC);
 
-        System.out.println("\n[" + routerId + "] FORWARDING Packet:");
+        logPacket(packet, "FORWARDING", "To: " + outgoingPort.ip + ":" + outgoingPort.port);
+
+        forwardFrame(packet.toString(), outgoingPort);
+    }
+
+    private void logPacket(Packet packet, String direction, String addressInfo) {
+        System.out.println("\n[" + routerId + "] " + direction + " Packet:");
         System.out.println("  Type: " + (packet.getType() == Packet.TYPE_USER ? "USER" : "ROUTING"));
         System.out.println("  Virtual Source MAC: " + packet.getSrcMAC());
         System.out.println("  Virtual Dest MAC: " + packet.getDestMAC());
         System.out.println("  Virtual Source IP: " + packet.getSrcIP());
         System.out.println("  Virtual Dest IP: " + packet.getDestIP());
         System.out.println("  Payload: " + packet.getPayload());
-        System.out.println("  To: " + outgoingPort.ip + ":" + outgoingPort.port);
-
-        forwardFrame(packet.toString(), outgoingPort);
+        System.out.println("  " + addressInfo);
     }
 
     private void processRoutingUpdate(Packet packet) {
@@ -240,15 +245,16 @@ public class Router {
 
             int currentCost = (current != null) ? current.cost : Integer.MAX_VALUE;
             String currentNextHop = (current != null) ? current.nextHopOrPort : "None";
+            String currentCostStr = currentCost == Integer.MAX_VALUE ? "INF" : String.valueOf(currentCost);
 
             if (newCost < currentCost) {
                 routingTable.put(subnet, new RoutingEntry(subnet, neighborId, newCost));
                 System.out.printf("[" + routerId + "]   [UPDATE] Subnet: %-15s | Cost: %-4s -> %-4d | Next-Hop: %-6s -> %s%n", 
-                                  subnet, (currentCost == Integer.MAX_VALUE ? "INF" : String.valueOf(currentCost)), newCost, currentNextHop, neighborId);
+                                  subnet, currentCostStr, newCost, currentNextHop, neighborId);
                 changed = true;
             } else {
                 System.out.printf("[" + routerId + "]   [IGNORE] Subnet: %-15s | Computed Cost: %-4d (>= Current: %s) | Kept Next-Hop: %s%n", 
-                                  subnet, newCost, (currentCost == Integer.MAX_VALUE ? "INF" : String.valueOf(currentCost)), currentNextHop);
+                                  subnet, newCost, currentCostStr, currentNextHop);
             }
         }
         System.out.println("[" + routerId + "] -----------------------------------------------------------");
@@ -262,7 +268,7 @@ public class Router {
     }
 
     private String extractSubnet(String virtualIP) {
-        int dotIndex = virtualIP.indexOf('.');
+        int dotIndex = virtualIP.lastIndexOf('.');
         if (dotIndex > 0) {
             return virtualIP.substring(0, dotIndex);
         }
@@ -270,7 +276,7 @@ public class Router {
     }
 
     private String extractHostId(String virtualIP) {
-        int dotIndex = virtualIP.indexOf('.');
+        int dotIndex = virtualIP.lastIndexOf('.');
         if (dotIndex > 0 && dotIndex < virtualIP.length() - 1) {
             return virtualIP.substring(dotIndex + 1);
         }

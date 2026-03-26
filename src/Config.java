@@ -114,17 +114,15 @@ public class Config {
         return links.get(id);
     }
 
-    public String getVirtualIp(String id) {
+    public List<String> getVirtualIps(String id) {
         DeviceInfo device = devices.get(id);
-        if (device.virtualIPs.isEmpty()) return null;
-        return device.virtualIPs.getFirst();
+        if (device == null || device.virtualIPs.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return device.virtualIPs;
     }
 
     public String getGateway(String id) {
         return devices.get(id).gateway;
-    }
-
-    public List<RoutingTableEntry> getRoutingTable(String routerId) {
-        return routingTables.get(routerId);
     }
 }
