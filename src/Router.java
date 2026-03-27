@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -95,14 +96,23 @@ public class Router {
             try{
                 long now = System.currentTimeMillis();
                 long TIMEOUT = 15000;
+                boolean tableChanged = false;
 
-                for (RoutingEntry entry : routingTable.values()) {
-                if (entry.cost == 0) continue;
+                Iterator<Map.Entry<String, RoutingEntry>> it = routingTable.entrySet().iterator();
+                while (it.hasNext()) {
+                    RoutingEntry entry = it.next().getValue();
+                    if (entry.cost == 0) continue;
 
-                if (now - entry.lastUpdated > TIMEOUT) {
-                    routingTable.remove(entry.subnet);
+                    if (now - entry.lastUpdated > TIMEOUT) {
+                        it.remove();
+                        tableChanged = true;
+                    }
                 }
-            }
+
+                if (tableChanged) {
+                    System.out.println("\n[" + routerId + "] Route(s) timed out and were removed. New routing table:");
+                    printRoutingTable();
+                }
 
                 String payload = generateRoutingPayload();
 
@@ -252,9 +262,6 @@ public class Router {
                 System.out.printf("[" + routerId + "]   [UPDATE] Subnet: %-15s | Cost: %-4s -> %-4d | Next-Hop: %-6s -> %s%n", 
                                   subnet, currentCostStr, newCost, currentNextHop, neighborId);
                 changed = true;
-            } else {
-                System.out.printf("[" + routerId + "]   [IGNORE] Subnet: %-15s | Computed Cost: %-4d (>= Current: %s) | Kept Next-Hop: %s%n", 
-                                  subnet, newCost, currentCostStr, currentNextHop);
             }
         }
         System.out.println("[" + routerId + "] -----------------------------------------------------------");
@@ -262,8 +269,6 @@ public class Router {
         if (changed) {
             System.out.println("[" + routerId + "] Routing table converged to a new state:");
             printRoutingTable();
-        } else {
-            System.out.println("[" + routerId + "] No changes to routing table. Already optimal for these routes.");
         }
     }
 
